@@ -36,15 +36,15 @@ static void cp210x_get_termios(struct tty_struct *, struct usb_serial_port *);
 static void cp210x_get_termios_port(struct usb_serial_port *port,
 	tcflag_t *cflagp, unsigned int *baudp);
 static void cp210x_change_speed(struct tty_struct *, struct usb_serial_port *,
-							struct ktermios *);
+							const struct ktermios *);
 static void cp210x_set_termios(struct tty_struct *, struct usb_serial_port *,
-							struct ktermios*);
+							const struct ktermios*);
 static bool cp210x_tx_empty(struct usb_serial_port *port);
 static int cp210x_tiocmget(struct tty_struct *);
 static int cp210x_tiocmset(struct tty_struct *, unsigned int, unsigned int);
 static int cp210x_tiocmset_port(struct usb_serial_port *port,
 		unsigned int, unsigned int);
-static void cp210x_break_ctl(struct tty_struct *, int);
+static int cp210x_break_ctl(struct tty_struct *, int);
 static int cp210x_attach(struct usb_serial *);
 static void cp210x_disconnect(struct usb_serial *);
 static void cp210x_release(struct usb_serial *);
@@ -1474,7 +1474,8 @@ static speed_t cp210x_get_actual_rate(speed_t baud)
  * otherwise.
  */
 static void cp210x_change_speed(struct tty_struct *tty,
-		struct usb_serial_port *port, struct ktermios *old_termios)
+		struct usb_serial_port *port,
+		const struct ktermios *old_termios)
 {
 	struct usb_serial *serial = port->serial;
 	struct cp210x_serial_private *priv = usb_get_serial_data(serial);
@@ -1506,7 +1507,8 @@ static void cp210x_change_speed(struct tty_struct *tty,
 }
 
 static void cp210x_set_termios(struct tty_struct *tty,
-		struct usb_serial_port *port, struct ktermios *old_termios)
+		struct usb_serial_port *port,
+		const struct ktermios *old_termios)
 {
 	u32 ctl_hs;
 	u32 flow_repl;
@@ -1515,7 +1517,7 @@ static void cp210x_set_termios(struct tty_struct *tty,
 	struct device *dev = &port->dev;
 	unsigned int cflag, old_cflag;
 	unsigned int iflag, old_iflag;
-	unsigned char* cc;
+	const unsigned char* cc;
 	struct cp210x_serial_private *priv = usb_get_serial_data(port->serial);
 	u16 bits;
 
@@ -1832,7 +1834,7 @@ static int cp210x_tiocmget(struct tty_struct *tty)
 	return result;
 }
 
-static void cp210x_break_ctl(struct tty_struct *tty, int break_state)
+static int cp210x_break_ctl(struct tty_struct *tty, int break_state)
 {
 	struct usb_serial_port *port = tty->driver_data;
 	u16 state;
@@ -1844,6 +1846,8 @@ static void cp210x_break_ctl(struct tty_struct *tty, int break_state)
 	dev_dbg(&port->dev, "%s - turning break %s\n", __func__,
 		state == BREAK_OFF ? "off" : "on");
 	cp210x_write_u16_reg(port, CP210X_SET_BREAK, state);
+
+	return 0;
 }
 
 #ifdef CONFIG_GPIOLIB
